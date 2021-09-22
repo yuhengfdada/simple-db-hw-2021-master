@@ -2,6 +2,7 @@ package simpledb.systemtest;
 
 import simpledb.common.Database;
 import simpledb.common.DbException;
+import simpledb.common.Debug;
 import simpledb.common.Utility;
 import simpledb.execution.SeqScan;
 import simpledb.storage.*;
@@ -34,6 +35,9 @@ public class ScanTest extends SimpleDbTestBase {
         for (int columns : columnSizes) {
             for (int rows : rowSizes) {
                 List<List<Integer>> tuples = new ArrayList<>();
+                if (Debug.isEnabled()) {
+                    Debug.log("%d",rows);
+                }
                 HeapFile f = SystemTestUtil.createRandomHeapFile(columns, rows, null, tuples);
                 SystemTestUtil.matchTuples(f, tuples);
                 Database.resetBufferPool(BufferPool.DEFAULT_PAGES);

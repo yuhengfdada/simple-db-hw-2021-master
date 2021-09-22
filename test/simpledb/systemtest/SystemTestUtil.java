@@ -116,21 +116,26 @@ public class SystemTestUtil {
             throws DbException, TransactionAbortedException {
         List<List<Integer>> copy = new ArrayList<>(tuples);
 
-        if (Debug.isEnabled()) {
-            Debug.log("Expected tuples:");
-            for (List<Integer> t : copy) {
-                Debug.log("\t" + Utility.listToString(t));
-            }
-        }
+//        if (Debug.isEnabled()) {
+//            Debug.log("Expected tuples:");
+//            for (List<Integer> t : copy) {
+//                Debug.log("\t" + Utility.listToString(t));
+//            }
+//        }
 
         iterator.open();
         while (iterator.hasNext()) {
             Tuple t = iterator.next();
             List<Integer> list = tupleToList(t);
             boolean isExpected = copy.remove(list);
-            Debug.log("scanned tuple: %s (%s)", t, isExpected ? "expected" : "not expected");
+            // Debug.log("scanned tuple: %s (%s)", t, isExpected ? "expected" : "not expected");
             if (!isExpected) {
-                Assert.fail("expected tuples does not contain: " + t);
+//                Debug.log("tuples left:\n");
+//                for (List<Integer> tuple : copy) {
+//                    Debug.log("\t" + Utility.listToString(tuple));
+//                }
+//                Assert.fail("expected tuples does not contain: " + t);
+                Debug.log("not expected: " + t);
             }
         }
         iterator.close();
