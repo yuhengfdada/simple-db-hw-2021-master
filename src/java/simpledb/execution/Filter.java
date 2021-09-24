@@ -14,6 +14,9 @@ public class Filter extends Operator {
 
     private static final long serialVersionUID = 1L;
 
+    private Predicate predicate;
+    private OpIterator childIter;
+
     /**
      * Constructor accepts a predicate to apply and a child operator to read
      * tuples to filter from.
@@ -25,29 +28,36 @@ public class Filter extends Operator {
      */
     public Filter(Predicate p, OpIterator child) {
         // some code goes here
+        predicate = p;
+        childIter = child;
     }
 
     public Predicate getPredicate() {
         // some code goes here
-        return null;
+        return predicate;
     }
 
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        return childIter.getTupleDesc();
     }
 
     public void open() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         // some code goes here
+        super.open();
+        childIter.open();
     }
 
     public void close() {
         // some code goes here
+        super.close();
+        childIter.close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
         // some code goes here
+        childIter.rewind();
     }
 
     /**
@@ -62,18 +72,27 @@ public class Filter extends Operator {
     protected Tuple fetchNext() throws NoSuchElementException,
             TransactionAbortedException, DbException {
         // some code goes here
+        while (childIter.hasNext()) {
+            Tuple res = childIter.next();
+            if (predicate.filter(res)) {
+                return res;
+            };
+        }
         return null;
     }
 
     @Override
     public OpIterator[] getChildren() {
         // some code goes here
-        return null;
+        OpIterator[] children = new OpIterator[1];
+        children[0] = childIter;
+        return children;
     }
 
     @Override
     public void setChildren(OpIterator[] children) {
         // some code goes here
+        childIter = children[0];
     }
 
 }

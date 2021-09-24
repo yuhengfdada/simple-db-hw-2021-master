@@ -128,7 +128,7 @@ public class SystemTestUtil {
             Tuple t = iterator.next();
             List<Integer> list = tupleToList(t);
             boolean isExpected = copy.remove(list);
-            // Debug.log("scanned tuple: %s (%s)", t, isExpected ? "expected" : "not expected");
+            Debug.log("scanned tuple: %s (%s)", t, isExpected ? "expected" : "not expected");
             if (!isExpected) {
 //                Debug.log("tuples left:\n");
 //                for (List<Integer> tuple : copy) {

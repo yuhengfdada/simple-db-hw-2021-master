@@ -1,5 +1,6 @@
 package simpledb.execution;
 
+import simpledb.storage.Field;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.common.DbException;
 import simpledb.storage.Tuple;
@@ -14,6 +15,11 @@ public class Join extends Operator {
 
     private static final long serialVersionUID = 1L;
 
+    private JoinPredicate predicate;
+    private OpIterator child1Iter;
+    private OpIterator child2Iter;
+    private Tuple cachedChild1 = null;
+    private boolean rewound = false;
     /**
      * Constructor. Accepts two children to join and the predicate to join them
      * on
@@ -27,11 +33,14 @@ public class Join extends Operator {
      */
     public Join(JoinPredicate p, OpIterator child1, OpIterator child2) {
         // some code goes here
+        predicate = p;
+        child1Iter = child1;
+        child2Iter = child2;
     }
 
     public JoinPredicate getJoinPredicate() {
         // some code goes here
-        return null;
+        return predicate;
     }
 
     /**
@@ -41,7 +50,7 @@ public class Join extends Operator {
      * */
     public String getJoinField1Name() {
         // some code goes here
-        return null;
+        return child1Iter.getTupleDesc().getFieldName(predicate.getField1());
     }
 
     /**
@@ -51,7 +60,7 @@ public class Join extends Operator {
      * */
     public String getJoinField2Name() {
         // some code goes here
-        return null;
+        return child2Iter.getTupleDesc().getFieldName(predicate.getField2());
     }
 
     /**
@@ -60,20 +69,28 @@ public class Join extends Operator {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        return TupleDesc.merge(child1Iter.getTupleDesc(),child2Iter.getTupleDesc());
     }
 
     public void open() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         // some code goes here
+        super.open();
+        child1Iter.open();
+        child2Iter.open();
     }
 
     public void close() {
         // some code goes here
+        child1Iter.close();
+        child2Iter.close();
+        super.close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
         // some code goes here
+        child1Iter.rewind();
+        child2Iter.rewind();
     }
 
     /**
@@ -96,18 +113,55 @@ public class Join extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
+        while (child1Iter.hasNext() || !rewound) {
+            Tuple child1Tuple = !rewound && cachedChild1 != null ? cachedChild1 : child1Iter.next();
+            cachedChild1 = child1Tuple;
+            while (child2Iter.hasNext()){
+                Tuple child2Tuple = child2Iter.next();
+                if (predicate.filter(child1Tuple, child2Tuple)) {
+                    rewound = false;
+                    return merge(child1Tuple, child2Tuple);
+                }
+            }
+            child2Iter.rewind();
+            rewound = true;
+        }
         return null;
     }
 
+    private Tuple merge(Tuple t1, Tuple t2) {
+        TupleDesc mergedDesc = getTupleDesc();
+        Tuple mergedTuple = new Tuple(mergedDesc);
+
+        Iterator<Field> it1 = t1.fields();
+        Iterator<Field> it2 = t2.fields();
+
+        int i = 0;
+        while (it1.hasNext()) {
+            mergedTuple.setField(i,t1.getField(i));
+            i += 1;
+            it1.next();
+        }
+        int j = 0;
+        while (it2.hasNext()) {
+            mergedTuple.setField(i, t2.getField(j));
+            i += 1;
+            j += 1;
+            it2.next();
+        }
+        return mergedTuple;
+    }
     @Override
     public OpIterator[] getChildren() {
         // some code goes here
-        return null;
+        return new OpIterator[]{child1Iter, child2Iter};
     }
 
     @Override
     public void setChildren(OpIterator[] children) {
         // some code goes here
+        child1Iter = children[0];
+        child2Iter = children[1];
     }
 
 }
