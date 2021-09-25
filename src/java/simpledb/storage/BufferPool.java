@@ -4,14 +4,11 @@ import simpledb.common.*;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
-import javax.xml.crypto.Data;
 import java.io.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -92,8 +89,15 @@ public class BufferPool {
         Catalog catalog = Database.getCatalog();
         DbFile dbFile = catalog.getDatabaseFile(pid.getTableId());
         Page res = dbFile.readPage(pid);
-        pageId2Page.put(pid, res);
+        safePut(pid, res);
         return res;
+    }
+
+    private void safePut(PageId pid, Page res) throws DbException {
+        if (pageId2Page.size() == numPages && !pageId2Page.containsKey(pid)) {
+            evictPage();
+        }
+        pageId2Page.put(pid, res);
     }
 
     /**
@@ -159,7 +163,11 @@ public class BufferPool {
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        // not necessary for lab1
+        List<Page> pages = Database.getCatalog().getDatabaseFile(tableId).insertTuple(tid, t);
+        for (Page page : pages) {
+            page.markDirty(true, tid);
+            safePut(page.getId(), page);
+        }
     }
 
     /**
@@ -179,6 +187,11 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        List<Page> pages = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId()).deleteTuple(tid, t);
+        for (Page page : pages) {
+            page.markDirty(true, tid);
+            safePut(page.getId(), page);
+        }
     }
 
     /**
@@ -189,7 +202,9 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
-
+        for (PageId pageId : pageId2Page.keySet()) {
+            flushPage(pageId);
+        }
     }
 
     /**
@@ -204,6 +219,7 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
+        pageId2Page.remove(pid);
     }
 
     /**
@@ -214,6 +230,11 @@ public class BufferPool {
     private synchronized void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
+        Page page = pageId2Page.get(pid);
+        if (page.isDirty() != null) {
+            DbFile file = Database.getCatalog().getDatabaseFile(page.getId().getTableId());
+            file.writePage(page);
+        }
     }
 
     /**
@@ -231,6 +252,14 @@ public class BufferPool {
     private synchronized void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
+        // just picks the first page to evict.
+        PageId toEvict = pageId2Page.keySet().iterator().next();
+        try {
+            flushPage(toEvict);
+        } catch (IOException ioe) {
+            System.out.println("IOException");
+        }
+        discardPage(toEvict);
     }
 
 }
